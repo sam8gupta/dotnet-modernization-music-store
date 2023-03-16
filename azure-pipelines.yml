@@ -1,0 +1,36 @@
+trigger: none
+
+pool:
+  name: 'Default'
+
+steps:
+# Publish the ASP.NET Core Application
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '-c release'
+    zipAfterPublish: false
+
+
+# Deploy the ASP.NET Core Application to AWS using CodeDeploy
+- task: CodeDeployDeployApplication@1
+  inputs:
+    awsCredentials: 'AWS - DotNet Account'
+    regionName: 'us-west-2'
+    applicationName: 'EC2_POC'
+    deploymentGroupName: 'EC2_POC'
+    deploymentRevisionSource: 'workspace'
+    revisionBundle: 'WebAppForDeploy/bin/release/net6.0/publish'
+    bucketName: 'dotnet-deploy-shiva-demo'
+    bundlePrefix: 'prod'
+    description: 'Deploy DotNetCoreIIS'
+    fileExistsBehavior: 'OVERWRITE'
+    timeoutInMins: 180
+- task: SendMessage@1
+  inputs:
+    awsCredentials: 'AWS - DotNet Account'
+    regionName: 'us-west-2'
+    messageTarget: 'queue'
+    message: '{"Build":"DotNetToEC2"}'
+    queueUrl: 'https://sqs.us-west-2.amazonaws.com/585649988287/Deployment'
